@@ -10,58 +10,96 @@
 
 const {createStore,applyMiddleware}=require("redux");
 const {logger} = require("redux-logger");
+const {default:thunk} = require("redux-thunk");
+const {default:axios} = require("axios");
 
 //define constant
-const GET_PRODUCTS="GET_PRODUCTS";
-const ADD_PRODUCTS="ADD_PRODUCTS";
+const GET_TODOS_REQUEST="GET_TODOS_REQUEST";
+const GET_TODOS_SUCCESS="GET_TODOS_SUCCESS";
+const GET_TODOS_FAILED="GET_TODOS_FAILED";
+const API_URL="https://jsonplaceholder.typicode.com/users/1/todos";
 
 //define initial state
-const initialProductsState={
-    products:["sugar","salt"],
-    totalProducts:2
+const initialTodosState={
+    todos:[],
+    isLoading:false,
+    error:null
 };
 
 //define action
-const getProducts=()=>{
+const getTodosRequest=()=>{
     return{
-        type:GET_PRODUCTS,
+        type:GET_TODOS_REQUEST,
     }
 };
-const addProduct=(product)=>{
+const getTodosFailed=(error)=>{
     return{
-        type:ADD_PRODUCTS,
-        payload:product
+        type:GET_TODOS_REQUEST,
+        payload:error
     }
 };
+const getTodosSuccess=(todos)=>{
+    return{
+        type:GET_TODOS_SUCCESS,
+        payload:todos
+    }
+};
+
 
 
 //define reducer
-const productReducer= (state=initialProductsState,action) => {
+const todosReducer= (state=initialTodosState,action) => {
   switch (action.type) {
-      case GET_PRODUCTS:
-          return{
-              ...state
-          };
-      case ADD_PRODUCTS:
+      case GET_TODOS_REQUEST:
           return {
-              products: [...state.products,action.payload],
-              totalProducts: state.totalProducts + 1
+             ...state,
+              isLoading: true
+          };
+      case GET_TODOS_SUCCESS:
+          return{
+              ...state,
+              isLoading: false,
+              todos: action.payload
+          };
+      case GET_TODOS_FAILED:
+          return {
+            ...state,
+              isLoading: false,
+              error: action.payload
           };
       default:
         return state;
   }
 };
 
+//fetch data
+const fetchData = ()=>{
+    return(dispatch)=>{
+        dispatch(getTodosRequest());
+        axios
+            .get(API_URL)
+            .then(response=>{
+                const todos=response.data;
+                const titles=todos.map(todo=>todo.title);
+                dispatch(getTodosSuccess(titles))
+                // console.log(titles)
+            })
+            .catch(error=> {
+                // dispatch(getTodosFailed(error.errorMessage))
+            })
+    }
+}
+
 
 //store
-const store = createStore(productReducer,applyMiddleware(logger));
+const store = createStore(todosReducer,applyMiddleware(thunk));
 store.subscribe(()=>{
     console.log(store.getState());
 });
 
 //action dispatch
-store.dispatch(addProduct("oil"));
-store.dispatch(getProducts());
+store.dispatch(fetchData());
+
 
 
 
